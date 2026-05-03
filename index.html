@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Round Table Pizza — Staff Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red:       #D32F2F;
+    --red-light: #FFEBEE;
+    --red-dark:  #B71C1C;
+    --ink:       #1A1A1A;
+    --ink-mid:   #444444;
+    --ink-light: #888888;
+    --cream:     #FAF8F4;
+    --cream-mid: #F0EDE6;
+    --cream-dark:#E8E3D8;
+    --green:     #2E7D32;
+    --green-bg:  #E8F5E9;
+    --orange:    #E65100;
+    --orange-bg: #FFF3E0;
+    --white:     #FFFFFF;
+    --shadow:    0 4px 24px rgba(0,0,0,0.08);
+    --radius:    16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── LOCK SCREEN ─────────────────────────────────────────── */
+  #lock-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--ink);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    z-index: 1000;
+    padding: 40px 24px;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+
+  #lock-screen.hiding {
+    opacity: 0;
+    transform: translateY(-20px);
+    pointer-events: none;
+  }
+
+  .lock-brand {
+    text-align: center;
+  }
+
+  .lock-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    color: var(--white);
+    letter-spacing: 2px;
+    line-height: 1;
+  }
+
+  .lock-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--red);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .lock-divider {
+    width: 40px;
+    height: 2px;
+    background: var(--red);
+    margin: 0 auto;
+  }
+
+  .lock-prompt {
+    font-size: 13px;
+    color: rgba(255,255,255,0.4);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 1px;
+  }
+
+  .pin-display {
+    display: flex;
+    gap: 14px;
+  }
+
+  .pin-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.2);
+    background: transparent;
+    transition: all 0.15s ease;
+  }
+
+  .pin-dot.filled {
+    background: var(--red);
+    border-color: var(--red);
+    transform: scale(1.1);
+  }
+
+  .pin-error {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--red);
+    letter-spacing: 1px;
+    min-height: 18px;
+    text-align: center;
+  }
+
+  .keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 72px);
+    gap: 12px;
+  }
+
+  .key {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--white);
+    font-size: 24px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s ease, transform 0.1s ease;
+    user-select: none;
+  }
+
+  .key:active { background: rgba(211,47,47,0.3); transform: scale(0.94); }
+  .key.empty { background: transparent; border: none; cursor: default; }
+  .key.del { font-size: 18px; color: rgba(255,255,255,0.4); }
+
+  /* ── APP ─────────────────────────────────────────────────── */
+  #app {
+    display: none;
+    max-width: 480px;
+    margin: 0 auto;
+    padding-bottom: 80px;
+  }
+
+  #app.visible { display: block; }
+
+  /* HEADER */
+  .app-header {
+    background: var(--ink);
+    padding: 20px 20px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .header-brand {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    color: var(--white);
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+
+  .header-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--red);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+
+  .week-pill {
+    background: var(--red);
+    color: var(--white);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    margin-top: 2px;
+  }
+
+  /* NAV TABS */
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+    margin-top: 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .nav-tab {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .nav-tab.active {
+    color: var(--white);
+    border-bottom-color: var(--red);
+  }
+
+  /* SECTIONS */
+  .section {
+    padding: 20px 16px 0;
+  }
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--ink-light);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--cream-dark);
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    margin-bottom: 16px;
+  }
+
+  .card-header {
+    background: var(--ink);
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .card-header-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--white);
+    letter-spacing: 1px;
+    font-weight: 500;
+  }
+
+  .card-header-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: rgba(255,255,255,0.4);
+  }
+
+  /* ── SCHEDULE TABLE ──────────────────────────────────────── */
+  .schedule-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 520px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .schedule-table th {
+    padding: 8px 10px;
+    background: var(--cream-mid);
+    color: var(--ink-light);
+    font-weight: 500;
+    text-align: center;
+    border-bottom: 1px solid var(--cream-dark);
+    white-space: nowrap;
+  }
+
+  .schedule-table th.today-col {
+    background: var(--red-light);
+    color: var(--red);
+  }
+
+  .schedule-table th.name-col {
+    text-align: left;
+    padding-left: 14px;
+    min-width: 80px;
+  }
+
+  .schedule-table td {
+    padding: 9px 10px;
+    text-align: center;
+    border-bottom: 1px solid var(--cream-mid);
+    color: var(--ink-mid);
+  }
+
+  .schedule-table td.name-cell {
+    text-align: left;
+    padding-left: 14px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .schedule-table td.today-col {
+    background: #fff8f8;
+    color: var(--red);
+    font-weight: 600;
+  }
+
+  .schedule-table td.off {
+    color: var(--cream-dark);
+  }
+
+  .schedule-table tr:last-child td { border-bottom: none; }
+  .schedule-table tr:nth-child(even) td { background: var(--cream); }
+  .schedule-table tr:nth-child(even) td.today-col { background: #fff0f0; }
+
+  .schedule-hint {
+    padding: 8px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--ink-light);
+    border-top: 1px solid var(--cream-mid);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .next-week-bar {
+    background: var(--cream-mid);
+    border-top: 2px dashed var(--cream-dark);
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .next-week-bar:active { background: var(--cream-dark); }
+
+  .next-week-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-mid);
+    font-weight: 500;
+  }
+
+  .next-week-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--ink-light);
+    margin-top: 2px;
+  }
+
+  .next-week-btn {
+    background: var(--ink);
+    color: var(--white);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+  }
+
+  /* ── DASHBOARD ───────────────────────────────────────────── */
+  .dash-row {
+    display: grid;
+    grid-template-columns: 90px 28px 1fr 60px;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--cream-mid);
+    gap: 10px;
+    transition: background 0.15s;
+  }
+
+  .dash-row:last-child { border-bottom: none; }
+  .dash-row.green-row { background: #f6fdf6; }
+  .dash-row.red-row { background: #fff5f5; }
+  .dash-row.today-row { border-left: 3px solid var(--orange); background: #fffbf0; }
+
+  .dash-date {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  .dash-day {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--ink-light);
+    margin-top: 2px;
+  }
+
+  .dash-count {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .dash-count.c0 { background: var(--cream-mid); color: var(--ink-light); }
+  .dash-count.c1 { background: var(--green-bg); color: var(--green); }
+  .dash-count.c2plus { background: #fee2e2; color: var(--red); }
+
+  .dash-names {
+    font-size: 12px;
+    color: var(--ink-mid);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .dash-names.empty { color: var(--cream-dark); font-style: italic; font-size: 11px; }
+
+  .dash-status {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .dash-status.open { background: var(--green-bg); color: var(--green); }
+  .dash-status.full { background: #fee2e2; color: var(--red); }
+
+  .dash-loading {
+    padding: 24px;
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-light);
+  }
+
+  /* ── FORM EMBED ──────────────────────────────────────────── */
+  .form-embed-wrapper {
+    padding: 0;
+    overflow: hidden;
+    border-radius: 0 0 var(--radius) var(--radius);
+  }
+
+  .form-embed-wrapper iframe {
+    width: 100%;
+    border: none;
+    display: block;
+  }
+
+  /* ── TIME OFF CARD ───────────────────────────────────────── */
+  .timeoff-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 16px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    text-decoration: none;
+    display: block;
+  }
+
+  .timeoff-card:active {
+    transform: scale(0.98);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  .timeoff-inner {
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .timeoff-left { display: flex; align-items: center; gap: 14px; }
+
+  .timeoff-icon {
+    width: 48px;
+    height: 48px;
+    background: var(--orange-bg);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    border: 1.5px solid #ffe0b2;
+  }
+
+  .timeoff-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 3px;
+  }
+
+  .timeoff-sub {
+    font-size: 12px;
+    color: var(--ink-light);
+  }
+
+  .timeoff-arrow {
+    width: 36px;
+    height: 36px;
+    background: var(--cream-mid);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: var(--ink);
+    flex-shrink: 0;
+  }
+
+  .timeoff-notice {
+    background: var(--orange-bg);
+    border-top: 1px solid #ffe0b2;
+    padding: 8px 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--orange);
+    letter-spacing: 0.5px;
+  }
+
+  /* ── TAB PANELS ──────────────────────────────────────────── */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── LEGEND ──────────────────────────────────────────────── */
+  .legend-bar {
+    display: flex;
+    gap: 16px;
+    padding: 0 16px 16px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-light);
+  }
+
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  /* ── LOADING SPINNER ─────────────────────────────────────── */
+  .spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--cream-dark);
+    border-top-color: var(--red);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── FADE IN ─────────────────────────────────────────────── */
+  .fade-in {
+    animation: fadeIn 0.4s ease forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── EMPTY STATE ─────────────────────────────────────────── */
+  .empty-state {
+    padding: 32px;
+    text-align: center;
+  }
+
+  .empty-state-icon { font-size: 32px; margin-bottom: 12px; }
+  .empty-state-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-light);
+    letter-spacing: 0.5px;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- ── LOCK SCREEN ────────────────────────────────────────── -->
+<div id="lock-screen">
+  <div class="lock-brand">
+    <div class="lock-logo">Round Table Pizza</div>
+    <div class="lock-sub">Staff Portal</div>
+  </div>
+  <div class="lock-divider"></div>
+  <div class="lock-prompt">Enter team passcode</div>
+  <div class="pin-display">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+  </div>
+  <div class="pin-error" id="pin-error"></div>
+  <div class="keypad">
+    <div class="key" onclick="pressKey('1')">1</div>
+    <div class="key" onclick="pressKey('2')">2</div>
+    <div class="key" onclick="pressKey('3')">3</div>
+    <div class="key" onclick="pressKey('4')">4</div>
+    <div class="key" onclick="pressKey('5')">5</div>
+    <div class="key" onclick="pressKey('6')">6</div>
+    <div class="key" onclick="pressKey('7')">7</div>
+    <div class="key" onclick="pressKey('8')">8</div>
+    <div class="key" onclick="pressKey('9')">9</div>
+    <div class="key empty"></div>
+    <div class="key" onclick="pressKey('0')">0</div>
+    <div class="key del" onclick="deleteKey()">⌫</div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ───────────────────────────────────────────── -->
+<div id="app">
+
+  <!-- HEADER -->
+  <div class="app-header">
+    <div class="header-top">
+      <div>
+        <div class="header-brand">Round Table Pizza</div>
+        <div class="header-sub">Staff Portal</div>
+      </div>
+      <div class="week-pill" id="week-pill">Loading...</div>
+    </div>
+    <div class="nav-tabs">
+      <div class="nav-tab active" onclick="switchTab('schedule')">📅 Schedule</div>
+      <div class="nav-tab" onclick="switchTab('daysoff')">🌴 Days Off</div>
+      <div class="nav-tab" onclick="switchTab('availability')">📋 Availability</div>
+      <div class="nav-tab" onclick="switchTab('request')">✉️ Request</div>
+    </div>
+  </div>
+
+  <!-- SCHEDULE TAB -->
+  <div class="tab-panel active" id="tab-schedule">
+    <div class="section">
+      <div class="section-label">Current Week</div>
+      <div class="card" id="schedule-card">
+        <div class="card-header">
+          <span class="card-header-title" id="schedule-week-title">Loading schedule...</span>
+          <span class="card-header-sub" id="schedule-week-dates"></span>
+        </div>
+        <div class="schedule-wrapper">
+          <div id="schedule-current" class="dash-loading"><span class="spinner"></span>Loading schedule...</div>
+        </div>
+        <div class="schedule-hint">
+          <span>← Swipe to see all days</span>
+          <span id="today-label"></span>
+        </div>
+      </div>
+
+      <div class="section-label">Next Week</div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-header-title" id="next-week-title">Next Week</span>
+          <span class="card-header-sub">Published by Thursday</span>
+        </div>
+        <div class="schedule-wrapper">
+          <div id="schedule-next" class="dash-loading"><span class="spinner"></span>Loading schedule...</div>
+        </div>
+        <div class="schedule-hint">
+          <span>← Swipe to see all days</span>
+          <span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAYS OFF TAB -->
+  <div class="tab-panel" id="tab-daysoff">
+    <div class="section">
+      <div class="section-label">Next 6 Months — Approved Days Off</div>
+      <div class="legend-bar">
+        <div class="legend-item"><div class="legend-dot" style="background:#2E7D32"></div>Open</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#D32F2F"></div>Full (2+ off)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#E65100"></div>Today</div>
+      </div>
+      <div class="card">
+        <div id="dashboard-content" class="dash-loading"><span class="spinner"></span>Loading days off...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AVAILABILITY TAB -->
+  <div class="tab-panel" id="tab-availability">
+    <div class="section">
+      <div class="section-label">Weekly Availability</div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-header-title">Submit Your Availability</span>
+          <span class="card-header-sub">Due Tue 11:59 PM</span>
+        </div>
+        <div class="form-embed-wrapper">
+          <iframe
+            src="https://docs.google.com/forms/d/e/1FAIpQLSdqi1_dvnfuKSa6Mq-B_LqXSAvcGHa2dtTE7uAu0LG--ji9sg/viewform?embedded=true"
+            height="900"
+            frameborder="0"
+            marginheight="0"
+            marginwidth="0">Loading form...</iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REQUEST TAB -->
+  <div class="tab-panel" id="tab-request">
+    <div class="section">
+      <div class="section-label">Time Off Request</div>
+      <a class="timeoff-card" href="https://docs.google.com/forms/d/e/1FAIpQLSd8Dw-wRC5eHEYjm6hSGJnj1sWvRX5KRhXfnmRHyvs6qSMVCw/viewform?usp=dialog" target="_blank">
+        <div class="timeoff-inner">
+          <div class="timeoff-left">
+            <div class="timeoff-icon">📅</div>
+            <div>
+              <div class="timeoff-title">Request a Day Off</div>
+              <div class="timeoff-sub">For specific dates — opens request form</div>
+            </div>
+          </div>
+          <div class="timeoff-arrow">→</div>
+        </div>
+        <div class="timeoff-notice">⏰ Minimum 2 weeks notice required</div>
+      </a>
+
+      <div class="section-label">How It Works</div>
+      <div class="card" style="padding:16px;">
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div style="display:flex; gap:12px; align-items:flex-start;">
+            <div style="width:28px; height:28px; background:var(--ink); color:var(--white); border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'DM Mono',monospace; font-size:12px; flex-shrink:0;">1</div>
+            <div>
+              <div style="font-weight:600; font-size:14px;">Submit your request</div>
+              <div style="font-size:12px; color:var(--ink-light); margin-top:2px;">Tap the button above, fill in dates and reason</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:flex-start;">
+            <div style="width:28px; height:28px; background:var(--ink); color:var(--white); border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'DM Mono',monospace; font-size:12px; flex-shrink:0;">2</div>
+            <div>
+              <div style="font-weight:600; font-size:14px;">Manager reviews</div>
+              <div style="font-size:12px; color:var(--ink-light); margin-top:2px;">Your manager will approve or deny within a few days</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:flex-start;">
+            <div style="width:28px; height:28px; background:var(--ink); color:var(--white); border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'DM Mono',monospace; font-size:12px; flex-shrink:0;">3</div>
+            <div>
+              <div style="font-weight:600; font-size:14px;">Check the Days Off tab</div>
+              <div style="font-size:12px; color:var(--ink-light); margin-top:2px;">Approved requests appear on the dashboard automatically</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label">Tips</div>
+      <div class="card" style="padding:16px;">
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div style="font-size:13px; color:var(--ink-mid);">✅ Check the <strong>Days Off tab</strong> first — if a day is red, it may not be approved</div>
+          <div style="font-size:13px; color:var(--ink-mid);">📅 Request at least <strong>2 weeks in advance</strong></div>
+          <div style="font-size:13px; color:var(--ink-mid);">🔄 You can submit <strong>multiple requests</strong> at any time</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── PASSCODE ────────────────────────────────────────────────
+const PASSCODE = "1636";
+let pinEntry = "";
+
+function pressKey(k) {
+  if (pinEntry.length >= 4) return;
+  pinEntry += k;
+  document.getElementById('d' + (pinEntry.length - 1)).classList.add('filled');
+  if (pinEntry.length === 4) {
+    setTimeout(checkPin, 150);
+  }
+}
+
+function deleteKey() {
+  if (pinEntry.length === 0) return;
+  document.getElementById('d' + (pinEntry.length - 1)).classList.remove('filled');
+  pinEntry = pinEntry.slice(0, -1);
+  document.getElementById('pin-error').textContent = '';
+}
+
+function checkPin() {
+  if (pinEntry === PASSCODE) {
+    document.getElementById('lock-screen').classList.add('hiding');
+    setTimeout(() => {
+      document.getElementById('lock-screen').style.display = 'none';
+      document.getElementById('app').classList.add('visible');
+      loadAllData();
+    }, 400);
+  } else {
+    document.getElementById('pin-error').textContent = 'Incorrect passcode';
+    pinEntry = '';
+    ['d0','d1','d2','d3'].forEach(id => document.getElementById(id).classList.remove('filled'));
+    setTimeout(() => document.getElementById('pin-error').textContent = '', 2000);
+  }
+}
+
+// ── TAB NAVIGATION ──────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── DATA LOADING ────────────────────────────────────────────
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR_J7bWlJ7oNq2IXR7_BCSQKYV8vxtJSEYDjewZFnyERPniPvH3C8m25iZ-g9reiaEih0fRngkfUoGE/pub?output=csv&sheet=";
+
+const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAYS_FULL  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS     = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function today() { return new Date(); }
+
+function getMondayOf(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = (day === 0) ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0,0,0,0);
+  return d;
+}
+
+function formatDate(d) {
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+}
+
+function formatDateFull(d) {
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+function sameDay(a, b) {
+  return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+}
+
+async function fetchCSV(sheetName) {
+  try {
+    const url = SHEET_URL + encodeURIComponent(sheetName);
+    const res = await fetch(url);
+    const text = await res.text();
+    return parseCSV(text);
+  } catch(e) {
+    return [];
+  }
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  return lines.map(line => {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQuotes = !inQuotes; }
+      else if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
+      else { current += ch; }
+    }
+    result.push(current.trim());
+    return result;
+  });
+}
+
+// ── LOAD ALL DATA ───────────────────────────────────────────
+async function loadAllData() {
+  loadSchedule();
+  loadDashboard();
+  setWeekPill();
+}
+
+function setWeekPill() {
+  const mon = getMondayOf(today());
+  document.getElementById('week-pill').textContent = 'WEEK OF ' + formatDate(mon).toUpperCase();
+}
+
+// ── SCHEDULE ────────────────────────────────────────────────
+async function loadSchedule() {
+  const rows = await fetchCSV('Schedule');
+  if (!rows || rows.length < 4) {
+    document.getElementById('schedule-current').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">Schedule not yet published</div></div>';
+    document.getElementById('schedule-next').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">Schedule not yet published</div></div>';
+    return;
+  }
+
+  // Row 2 = week date (index 1), Row 3 = day headers (index 2), Row 4+ = employees
+  // Find the week date from cell B2 (index 1, col 1)
+  const weekDateStr = rows[1] ? rows[1][2] : '';
+  const weekDate = weekDateStr ? new Date(weekDateStr) : getMondayOf(today());
+
+  // Day columns: D=3,G=6,J=9,M=12,P=15,S=18,V=21 (0-indexed)
+  const dayStartCols = [3,6,9,12,15,18,21];
+  const t = today();
+
+  // Build dates for this week
+  const weekDates = dayStartCols.map((_, i) => {
+    const d = new Date(weekDate);
+    d.setDate(weekDate.getDate() + i);
+    return d;
+  });
+
+  // Find today's column
+  const todayIdx = weekDates.findIndex(d => sameDay(d, t));
+
+  // Employee rows start at index 3 (row 4), end before totals
+  const empRows = rows.slice(3).filter(r => r[1] && r[1].trim() && r[1].trim() !== 'WEEKLY TOTALS');
+
+  // Set titles
+  const sun = weekDates[6];
+  document.getElementById('schedule-week-title').textContent = 'Week of ' + formatDate(weekDates[0]);
+  document.getElementById('schedule-week-dates').textContent = formatDate(weekDates[0]) + ' – ' + formatDate(sun);
+  document.getElementById('today-label').textContent = todayIdx >= 0 ? DAYS_FULL[todayIdx] + ' = Today' : '';
+
+  // Next week dates
+  const nextMon = new Date(weekDate);
+  nextMon.setDate(weekDate.getDate() + 7);
+  document.getElementById('next-week-title').textContent = 'Week of ' + formatDate(nextMon);
+
+  // Build table
+  document.getElementById('schedule-current').innerHTML = buildScheduleTable(empRows, weekDates, dayStartCols, todayIdx, false);
+  document.getElementById('schedule-next').innerHTML = buildScheduleTable(empRows, weekDates, dayStartCols, -1, true);
+}
+
+function buildScheduleTable(empRows, weekDates, dayStartCols, todayIdx, isNext) {
+  if (isNext) {
+    return '<div class="empty-state"><div class="empty-state-icon">⏳</div><div class="empty-state-text">Next week\'s schedule will appear here once published by Thursday</div></div>';
+  }
+
+  let html = '<table class="schedule-table"><thead><tr>';
+  html += '<th class="name-col">Name</th>';
+  weekDates.forEach((d, i) => {
+    const isToday = i === todayIdx;
+    html += `<th class="${isToday ? 'today-col' : ''}">${DAYS_SHORT[(d.getDay())]}${isToday ? ' ★' : ''}<br><span style="font-size:9px;font-weight:400;">${formatDate(d)}</span></th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  empRows.forEach(row => {
+    const name = row[1] || '';
+    html += `<tr><td class="name-cell">${name}</td>`;
+    dayStartCols.forEach((startCol, i) => {
+      const isToday = i === todayIdx;
+      const start = row[startCol] || '';
+      const end   = row[startCol + 1] || '';
+      let shift = '—';
+      if (start && end) {
+        shift = formatTime(start) + '-' + formatTime(end);
+      } else if (start) {
+        shift = formatTime(start);
+      }
+      const isEmpty = shift === '—';
+      html += `<td class="${isToday ? 'today-col' : ''} ${isEmpty ? 'off' : ''}">${shift}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  return html;
+}
+
+function formatTime(t) {
+  if (!t) return '';
+  // Handle time formats: "9:00 AM", "09:00:00", "0.375" (Excel fraction)
+  if (typeof t === 'string' && t.includes(':')) {
+    const parts = t.split(':');
+    let h = parseInt(parts[0]);
+    const m = parts[1].padStart(2,'0');
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    if (h > 12) h -= 12;
+    if (h === 0) h = 12;
+    return `${h}:${m}`;
+  }
+  // Excel decimal time
+  const num = parseFloat(t);
+  if (!isNaN(num) && num < 1) {
+    const totalMins = Math.round(num * 24 * 60);
+    const h = Math.floor(totalMins / 60);
+    const m = (totalMins % 60).toString().padStart(2,'0');
+    return `${h > 12 ? h-12 : h === 0 ? 12 : h}:${m}`;
+  }
+  return t;
+}
+
+// ── DAYS OFF DASHBOARD ──────────────────────────────────────
+async function loadDashboard() {
+  const rows = await fetchCSV('Day Off Requests');
+  const container = document.getElementById('dashboard-content');
+
+  if (!rows || rows.length < 2) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🌴</div><div class="empty-state-text">No approved days off yet</div></div>';
+    return;
+  }
+
+  // Parse approved requests
+  // Columns: A=Timestamp, B=Name, C=Date From, D=Date To, E=Reason, F=Status
+  const approved = [];
+  rows.slice(1).forEach(row => {
+    const name   = row[1];
+    const from   = row[2] ? new Date(row[2]) : null;
+    const to     = row[3] ? new Date(row[3]) : null;
+    const status = row[5] || 'Pending';
+    if (name && from && to && status.trim().toLowerCase() === 'approved') {
+      approved.push({ name, from, to });
+    }
+  });
+
+  // Build 6 month date range
+  const start = new Date(today());
+  start.setHours(0,0,0,0);
+  const end = new Date(start);
+  end.setMonth(end.getMonth() + 6);
+
+  let html = '';
+  const cur = new Date(start);
+  let rowCount = 0;
+
+  while (cur <= end) {
+    // Find who's off this day
+    const offPeople = approved.filter(r => cur >= r.from && cur <= r.to).map(r => r.name);
+    const count = offPeople.length;
+    const isToday = sameDay(cur, today());
+    const isFull = count >= 2;
+
+    let rowClass = 'dash-row';
+    if (isToday) rowClass += ' today-row';
+    else if (isFull) rowClass += ' red-row';
+    else if (count === 1) rowClass += ' green-row';
+
+    const countClass = count === 0 ? 'c0' : count === 1 ? 'c1' : 'c2plus';
+    const statusClass = isFull ? 'full' : 'open';
+    const statusText = isFull ? 'Full' : 'Open';
+    const namesText = offPeople.length > 0 ? offPeople.join(', ') : '—';
+    const namesClass = offPeople.length === 0 ? 'empty' : '';
+
+    html += `
+      <div class="${rowClass}">
+        <div>
+          <div class="dash-date">${formatDate(cur)}</div>
+          <div class="dash-day">${DAYS_SHORT[cur.getDay()].toUpperCase()}</div>
+        </div>
+        <div class="dash-count ${countClass}">${count}</div>
+        <div class="dash-names ${namesClass}">${namesText}</div>
+        <div class="dash-status ${statusClass}">${statusText}</div>
+      </div>`;
+
+    rowCount++;
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  container.innerHTML = html || '<div class="dash-loading">No data available</div>';
+}
+</script>
+</body>
+</html>
