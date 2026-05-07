@@ -853,7 +853,12 @@ function switchTab(name) {
 }
 
 // ── DATA LOADING ────────────────────────────────────────────
-const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR_J7bWlJ7oNq2IXR7_BCSQKYV8vxtJSEYDjewZFnyERPniPvH3C8m25iZ-g9reiaEih0fRngkfUoGE/pub?output=csv&sheet=";
+// Sheet URLs using GID numbers for reliable tab targeting
+const SHEET_BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR_J7bWlJ7oNq2IXR7_BCSQKYV8vxtJSEYDjewZFnyERPniPvH3C8m25iZ-g9reiaEih0fRngkfUoGE/pub?output=csv&gid=";
+const SHEET_GID = {
+  'Schedule':         '328260725',
+  'Day Off Requests': '1256864323'
+};
 
 const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const DAYS_FULL  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -884,7 +889,9 @@ function sameDay(a, b) {
 
 async function fetchCSV(sheetName) {
   try {
-    const url = SHEET_URL + encodeURIComponent(sheetName);
+    const gid = SHEET_GID[sheetName];
+    if (!gid) { Logger && Logger.log('Unknown sheet: ' + sheetName); return []; }
+    const url = SHEET_BASE + gid;
     const res = await fetch(url);
     const text = await res.text();
     return parseCSV(text);
