@@ -931,40 +931,59 @@ async function loadSchedule() {
     return;
   }
 
-  // Row 2 = week date (index 1), Row 3 = day headers (index 2), Row 4+ = employees
-  // Find the week date from cell B2 (index 1, col 1)
-  const weekDateStr = rows[1] ? rows[1][2] : '';
-  const weekDate = weekDateStr ? new Date(weekDateStr) : getMondayOf(today());
+  // Sheet layout:
+  // Row 1 (index 0): blank, "Week of (Monday):", blank, title...
+  // Row 2 (index 1): blank, [Monday date = col B = index 1], blank, dates...
+  // Row 3 (index 2): headers ID, Name, Rate, Mon Start...
+  // Row 4+ (index 3+): employee data
 
-  // Day columns: D=3,G=6,J=9,M=12,P=15,S=18,V=21 (0-indexed)
+  // Get week date from row 2 col B (index 1,1) - format M/D/YYYY
+  const weekDateStr = (rows[1] && rows[1][1]) ? rows[1][1].trim() : '';
+  let weekDate;
+  if (weekDateStr) {
+    const parts = weekDateStr.split('/');
+    if (parts.length === 3) {
+      weekDate = new Date(parseInt(parts[2]), parseInt(parts[0])-1, parseInt(parts[1]));
+    } else {
+      weekDate = new Date(weekDateStr);
+    }
+  }
+  if (!weekDate || isNaN(weekDate.getTime())) weekDate = getMondayOf(today());
+  weekDate.setHours(0,0,0,0);
+
+  // Day start columns (0-indexed): D=3,G=6,J=9,M=12,P=15,S=18,V=21
   const dayStartCols = [3,6,9,12,15,18,21];
   const t = today();
 
-  // Build dates for this week
+  // Build dates for each day of the week
   const weekDates = dayStartCols.map((_, i) => {
     const d = new Date(weekDate);
     d.setDate(weekDate.getDate() + i);
+    d.setHours(0,0,0,0);
     return d;
   });
 
   // Find today's column
   const todayIdx = weekDates.findIndex(d => sameDay(d, t));
 
-  // Employee rows start at index 3 (row 4), end before totals
-  const empRows = rows.slice(3).filter(r => r[1] && r[1].trim() && r[1].trim() !== 'WEEKLY TOTALS');
+  // Employee rows: row 4 onward (index 3+), skip blank/totals rows
+  const skipNames = ['weekly totals', 'total hours', 'totals', ''];
+  const empRows = rows.slice(3).filter(r => {
+    const name = (r[1] || '').trim().toLowerCase();
+    return name && !skipNames.includes(name);
+  });
 
   // Set titles
-  const sun = weekDates[6];
   document.getElementById('schedule-week-title').textContent = 'Week of ' + formatDate(weekDates[0]);
-  document.getElementById('schedule-week-dates').textContent = formatDate(weekDates[0]) + ' – ' + formatDate(sun);
-  document.getElementById('today-label').textContent = todayIdx >= 0 ? DAYS_FULL[todayIdx] + ' = Today' : '';
+  document.getElementById('schedule-week-dates').textContent = formatDate(weekDates[0]) + ' – ' + formatDate(weekDates[6]);
+  document.getElementById('today-label').textContent = todayIdx >= 0 ? DAYS_FULL[weekDates[todayIdx].getDay()] + ' = Today' : '';
 
-  // Next week dates
+  // Next week
   const nextMon = new Date(weekDate);
   nextMon.setDate(weekDate.getDate() + 7);
   document.getElementById('next-week-title').textContent = 'Week of ' + formatDate(nextMon);
 
-  // Build table
+  // Build tables
   document.getElementById('schedule-current').innerHTML = buildScheduleTable(empRows, weekDates, dayStartCols, todayIdx, false);
   document.getElementById('schedule-next').innerHTML = buildScheduleTable(empRows, weekDates, dayStartCols, -1, true);
 }
@@ -1041,12 +1060,28 @@ async function loadDashboard() {
   // Parse approved requests
   // Columns: A=Timestamp, B=Name, C=Date From, D=Date To, E=Reason, F=Status
   const approved = [];
+
+  function parseSheetDate(str) {
+    if (!str || !str.trim()) return null;
+    const s = str.trim();
+    // M/D/YYYY format
+    const parts = s.split('/');
+    if (parts.length === 3) {
+      const d = new Date(parseInt(parts[2]), parseInt(parts[0])-1, parseInt(parts[1]));
+      d.setHours(0,0,0,0);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    const d = new Date(s);
+    d.setHours(0,0,0,0);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
   rows.slice(1).forEach(row => {
-    const name   = row[1];
-    const from   = row[2] ? new Date(row[2]) : null;
-    const to     = row[3] ? new Date(row[3]) : null;
-    const status = row[5] || 'Pending';
-    if (name && from && to && status.trim().toLowerCase() === 'approved') {
+    const name   = (row[1] || '').trim();
+    const from   = parseSheetDate(row[2]);
+    const to     = parseSheetDate(row[3]);
+    const status = (row[5] || '').trim();
+    if (name && from && to && status.toLowerCase() === 'approved') {
       approved.push({ name, from, to });
     }
   });
