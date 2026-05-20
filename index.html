@@ -857,6 +857,7 @@ function switchTab(name) {
 const SHEET_BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR_J7bWlJ7oNq2IXR7_BCSQKYV8vxtJSEYDjewZFnyERPniPvH3C8m25iZ-g9reiaEih0fRngkfUoGE/pub?output=csv&gid=";
 const SHEET_GID = {
   'Schedule':         '328260725',
+  'Schedule Next':    '716454395',
   'Day Off Requests': '1256864323'
 };
 
@@ -990,9 +991,65 @@ async function loadSchedule() {
   nextMon.setDate(weekDate.getDate() + 7);
   document.getElementById('next-week-title').textContent = 'Week of ' + formatDate(nextMon);
 
-  // Build tables
+  // Build current week table
   document.getElementById('schedule-current').innerHTML = buildScheduleTable(empRows, weekDates, dayStartCols, todayIdx, false);
-  document.getElementById('schedule-next').innerHTML = buildScheduleTable(empRows, weekDates, dayStartCols, -1, true);
+
+  // Load next week separately from Schedule Next tab
+  loadNextWeekSchedule();
+}
+
+async function loadNextWeekSchedule() {
+  const rows = await fetchCSV('Schedule Next');
+
+  // Check if tab has any data at all
+  if (!rows || rows.length < 4) {
+    document.getElementById('schedule-next').innerHTML = '<div class="empty-state"><div class="empty-state-icon">⏳</div><div class="empty-state-text">Next week\'s schedule will appear here once published by Thursday</div></div>';
+    return;
+  }
+
+  // Get next week date from B2 (row index 1, col index 1)
+  const weekDateStr = (rows[1] && rows[1][1]) ? rows[1][1].trim() : '';
+  let weekDate;
+  if (weekDateStr) {
+    const parts = weekDateStr.split('/');
+    if (parts.length === 3) {
+      weekDate = new Date(parseInt(parts[2]), parseInt(parts[0])-1, parseInt(parts[1]));
+    } else {
+      weekDate = new Date(weekDateStr);
+    }
+  }
+
+  if (!weekDate || isNaN(weekDate.getTime())) {
+    document.getElementById('schedule-next').innerHTML = '<div class="empty-state"><div class="empty-state-icon">⏳</div><div class="empty-state-text">Next week\'s schedule will appear here once published by Thursday</div></div>';
+    return;
+  }
+  weekDate.setHours(0,0,0,0);
+
+  const dayStartCols = [3,6,9,12,15,18,21];
+  const weekDates = dayStartCols.map((_, i) => {
+    const d = new Date(weekDate);
+    d.setDate(weekDate.getDate() + i);
+    d.setHours(0,0,0,0);
+    return d;
+  });
+
+  // Filter real employee rows
+  const skipNames = ['weekly totals', 'total hours', 'totals', ''];
+  const empRows = rows.slice(3).filter(r => {
+    const name = (r[1] || '').trim().toLowerCase();
+    return name && !skipNames.includes(name);
+  });
+
+  // Only show if at least one shift is filled in
+  const hasShifts = empRows.some(row => dayStartCols.some(col => (row[col] || '').trim()));
+  if (!hasShifts) {
+    document.getElementById('next-week-title').textContent = 'Week of ' + formatDate(weekDates[0]);
+    document.getElementById('schedule-next').innerHTML = '<div class="empty-state"><div class="empty-state-icon">⏳</div><div class="empty-state-text">Next week\'s schedule will appear here once published by Thursday</div></div>';
+    return;
+  }
+
+  document.getElementById('next-week-title').textContent = 'Week of ' + formatDate(weekDates[0]);
+  document.getElementById('schedule-next').innerHTML = buildScheduleTable(empRows, weekDates, dayStartCols, -1, false);
 }
 
 function buildScheduleTable(empRows, weekDates, dayStartCols, todayIdx, isNext) {
